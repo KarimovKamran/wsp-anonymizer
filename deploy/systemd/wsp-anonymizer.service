@@ -1,0 +1,32 @@
+[Unit]
+Description=WSP Document Anonymizer
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=anonymizer
+Group=anonymizer
+WorkingDirectory=/opt/wsp-anonymizer
+EnvironmentFile=/etc/wsp-anonymizer/anonymizer.env
+ExecStart=/usr/bin/node /opt/wsp-anonymizer/src/server.js
+Restart=on-failure
+RestartSec=5
+UMask=0027
+
+# Харднинг
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/wsp-anonymizer
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

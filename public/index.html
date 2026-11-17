@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WSP · Анонимайзер документов</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="logo">WSP</span><span class="title">Анонимайзер документов</span></div>
+    <div class="who hidden" id="who"><span id="whoName"></span><button class="link" id="logoutBtn">Выйти</button></div>
+  </header>
+
+  <!-- Вход -->
+  <main id="loginView" class="center hidden">
+    <form id="loginForm" class="card login">
+      <h1>Вход</h1>
+      <p class="muted">Учётная запись домена WSP</p>
+      <label>Логин<input name="username" autocomplete="username" required autofocus></label>
+      <label>Пароль<input name="password" type="password" autocomplete="current-password" required></label>
+      <button class="primary" type="submit">Войти</button>
+      <div class="error" id="loginError"></div>
+    </form>
+  </main>
+
+  <!-- Приложение -->
+  <main id="appView" class="hidden">
+    <nav class="tabs">
+      <button data-tab="anon" class="active">Анонимизация</button>
+      <button data-tab="history">История</button>
+      <button data-tab="deanon">Деанонимизация</button>
+      <button data-tab="dict" class="hidden" id="dictTabBtn">Словарь</button>
+      <button data-tab="audit" class="hidden" id="auditTabBtn">Журнал</button>
+      <span class="health" id="health"></span>
+    </nav>
+
+    <section id="tab-anon" class="tab">
+      <div class="card">
+        <h2>Загрузить документ</h2>
+        <label class="drop" id="drop">
+          <input type="file" id="fileInput" accept=".docx,.pdf,.txt,.png,.jpg,.jpeg,.tif,.tiff,.bmp" hidden>
+          <span class="big">Перетащите файл сюда или нажмите для выбора</span>
+          <span class="muted">DOCX (форматирование сохраняется) · PDF · скан PDF/PNG/JPG/TIFF (OCR) · TXT · до <span id="maxMb">50</span> МБ</span>
+        </label>
+        <details>
+          <summary>…или вставить текст</summary>
+          <textarea id="pasteText" rows="8" placeholder="Вставьте текст для анонимизации"></textarea>
+          <button class="primary" id="pasteBtn">Анонимизировать текст</button>
+        </details>
+        <div class="error" id="uploadError"></div>
+      </div>
+      <div class="card">
+        <h2>Текущие задания</h2>
+        <div id="activeJobs" class="jobs"></div>
+      </div>
+      <div class="card note">
+        <b>Как это работает.</b> Имена, организации, адреса, номера счетов и другие реквизиты заменяются токенами
+        вида <code>[PER-7K2QX9]</code>. Одна и та же сущность получает один токен (разные падежи — <code>[PER-7K2QX9-2]</code>).
+        Таблица соответствий хранится зашифрованной на сервере; по ней можно вернуть исходные данные во вкладке «Деанонимизация».
+        <br><b>Обязательно</b> просмотрите результат перед отправкой во внешние системы — автоматика может что-то пропустить.
+      </div>
+    </section>
+
+    <section id="tab-history" class="tab hidden">
+      <div class="card">
+        <div class="row"><h2>История</h2><label class="hidden" id="allLabel"><input type="checkbox" id="showAll"> все пользователи</label></div>
+        <div id="historyJobs" class="jobs"></div>
+      </div>
+    </section>
+
+    <section id="tab-deanon" class="tab hidden">
+      <div class="card">
+        <h2>Вернуть исходные данные в файл</h2>
+        <p class="muted">Загрузите анонимизированный документ (в т.ч. после правок) — токены будут заменены на исходные значения.</p>
+        <label class="drop" id="deanonDrop">
+          <input type="file" id="deanonFile" accept=".docx,.pdf,.txt" hidden>
+          <span class="big">DOCX · PDF · TXT</span>
+        </label>
+        <div id="deanonFileReport"></div>
+      </div>
+      <div class="card">
+        <h2>…или в текст</h2>
+        <textarea id="deanonText" rows="8" placeholder="Вставьте текст с токенами, например ответ внешнего ИИ"></textarea>
+        <button class="primary" id="deanonTextBtn">Восстановить</button>
+        <div id="deanonTextReport"></div>
+        <textarea id="deanonTextOut" rows="8" readonly class="hidden"></textarea>
+        <button id="copyOut" class="hidden">Скопировать</button>
+      </div>
+    </section>
+
+    <section id="tab-dict" class="tab hidden">
+      <div class="card">
+        <div class="row"><h2>Словарь известных сущностей</h2><span class="muted" id="dictCount"></span></div>
+        <p class="muted">То, что модель уже находила в документах. Каждый новый документ сначала проверяется по словарю,
+          найденное скрывается, и только потом текст уходит в модель. Отключите ложное срабатывание
+          (например, «Генеральный директор») — оно перестанет заменяться, даже если модель найдёт его снова.</p>
+        <div class="row"><input id="dictFilter" placeholder="Фильтр"><label><input type="checkbox" id="dictOnlyOff"> только отключённые</label></div>
+        <div class="tablewrap"><table id="dictTable"><thead><tr><th>Тип</th><th>Значение</th><th>Нормальная форма</th><th>Документов</th><th>Последний раз</th><th></th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </section>
+
+    <section id="tab-audit" class="tab hidden">
+      <div class="card">
+        <h2>Журнал действий</h2>
+        <div class="tablewrap"><table id="auditTable"><thead><tr><th>Время (UTC)</th><th>Пользователь</th><th>Действие</th><th>Задание</th><th>IP</th><th>Детали</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="entitiesDlg">
+    <div class="row"><h2>Таблица замен</h2><button class="link" id="closeDlg">Закрыть</button></div>
+    <input id="entFilter" placeholder="Фильтр">
+    <div class="tablewrap"><table id="entTable"><thead><tr><th>Токен</th><th>Тип</th><th>Исходное значение</th><th>Источник</th></tr></thead><tbody></tbody></table></div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
